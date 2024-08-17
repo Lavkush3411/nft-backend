@@ -5,6 +5,7 @@ import { derivePath } from "ed25519-hd-key";
 import { Keypair, Connection,PublicKey } from "@solana/web3.js";
 import bs58 from "bs58";
 import axios from "axios";
+import BigNumber from "bignumber.js"
 
 
 const router = Router();
@@ -75,6 +76,36 @@ router.get("/get-balance-sol", async (req, res) => {
         res.status(500).json({ error: "Failed to get balance. Please try again." });
     }
 });
-  
+
+router.get("/get-balance-eth", async(req, res)=>{
+    try {
+        // thi is a rpc server link by alkcemy 
+        const url = "https://eth-mainnet.g.alchemy.com/v2/gN9fcg5Y_oVUVjoNZPYTewKErIQo-uwp";
+        const publicKey = req.query.publicKey as string;
+
+        if (!publicKey) {
+            return res.status(400).json({ error: "Public key is required" });
+        }
+
+        const response = await axios.post(url, {
+            jsonrpc: "2.0",
+            id: 1,
+            method: "eth_getBalance",
+            params: [publicKey, "latest"]
+        });
+
+        // in this response we get value in hex string so we have to convert it onto number
+        const balanceInWeiHex = response.data.result;
+        // Convert the hex string to a BigNumber
+        const balanceInWei = new BigNumber(balanceInWeiHex, 16);
+        // Convert Wei to Ether by dividing by 1e18
+        const ethBalance = balanceInWei.dividedBy(1e18).toString(10);
+        
+        res.json({ publicKey, ethBalance });
+    } catch (error) {
+        // console.error("Error getting balance:", error.message || error);
+        res.status(500).json({ error: "Failed to get balance. Please try again." });
+    }
+})
 
 export default router;
